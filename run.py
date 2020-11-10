@@ -32,7 +32,7 @@ OUTPUT = ROOT_DIR / "output" / "dynamic_optimized_01"
 DISPARITY_DIR = OUTPUT / "disparity"
 COLORED_DISPARITY_DIR = OUTPUT / "colored_disparity"
 
-SCALE = 0.1  # 1.0 does not fit into Nvidia GPU memory
+SCALE = 0.75  # 1.0 does not fit into Nvidia GPU memory
 MAX_DISP = 768
 
 # Create output directories
@@ -76,7 +76,7 @@ scp.i2.load(right_intrinsics)
 
 all_images = sorted(IMAGES_DIR.glob("*.png"))
 
-for idx, path_to_image in tqdm(enumerate(all_images[:5])):
+for idx, path_to_image in tqdm(enumerate(all_images[195:200])):
 
     img_left, img_right = readstack(str(path_to_image))
 
@@ -187,12 +187,10 @@ for idx, path_to_image in tqdm(enumerate(all_images[:5])):
     invalid_pixel_mask = pred_disp < 0
     rect_mask = np.all(img_left_rect == [0, 0, 0], axis=-1)
     rect_mask_bool = rect_mask.astype(bool)
-    sky_mask = sky(img_left_rect, horizon_row=984, B_thresh=150)
+    sky_mask = sky(img_left_rect, horizon_row=800, B_thresh=200)
 
     bad_pixel_mask = invalid_pixel_mask + rect_mask + sky_mask
     pred_disp[bad_pixel_mask] = 0
-
-    # import pdb; pdb.set_trace()
 
     disparity_u8 = (255 * pred_disp / MAX_DISP).astype(np.uint8)
     colored_disp = colorize_disparity_map_u8(

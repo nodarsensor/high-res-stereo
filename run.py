@@ -62,6 +62,9 @@ all_files = sorted(os.listdir(LEFT_RECTIFIED))
 
 for idx, filename in enumerate(all_files):
 
+    if not filename.endswith('.png'):
+        continue
+
     path_to_left_img = LEFT_RECTIFIED / filename
     path_to_right_img = RIGHT_RECTIFIED / filename
     img1r = cv2.imread(str(path_to_left_img), 0)

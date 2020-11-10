@@ -15,15 +15,20 @@ from models.submodule import *
 from utils.preprocess import get_transform
 
 from pynodar.filters import sky
-from pynodar.stereo import colorize_disparity_map_u8
+from pynodar.stereo import colorize_disparity_map_u8, rectify_with_scp
+from pynodar.trinsics import stereo_camera_parameters
+from pynodar.utils import readstack
 
 # Configuration
 ROOT_DIR = Path()
 WEIGHTS_PATH = ROOT_DIR / "weights" / "final-768px.tar"
-PATH_TO_IMAGES = ROOT_DIR / "data"
-LEFT_RECTIFIED = PATH_TO_IMAGES / "left_rect"
-RIGHT_RECTIFIED = PATH_TO_IMAGES / "right_rect"
-OUTPUT = ROOT_DIR / "output"
+
+DATA_DIR = ROOT_DIR / os.pardir / os.pardir / "data" / "nodar" / "2020-09-09"
+IMAGES_DIR = DATA_DIR / "dynamic"
+TRINSICS_DIR = DATA_DIR / "trinsics"
+EXTRINSICS_DIR = DATA_DIR / "dynamic_extrinsics"
+
+OUTPUT = ROOT_DIR / "output" / "dynamic_optimized_01"
 DISPARITY_DIR = OUTPUT / "disparity"
 COLORED_DISPARITY_DIR = OUTPUT / "colored_disparity"
 
@@ -60,21 +65,35 @@ model.load_state_dict(pretrained_dict["state_dict"], strict=False)
 processed = get_transform()
 model.eval()
 
-all_files = sorted(os.listdir(LEFT_RECTIFIED))
+# Read camera parameters
+scp = stereo_camera_parameters()
 
-for idx, filename in tqdm(enumerate(all_files[:5])):
+left_intrinsics = TRINSICS_DIR / "i1_v2.yaml"
+right_intrinsics = TRINSICS_DIR / "i2_v2.yaml"
 
-    if not filename.endswith(".png"):
-        continue
+scp.i1.load(left_intrinsics)
+scp.i2.load(right_intrinsics)
 
-    # import pdb; pdb.set_trace()
-    path_to_left_img = LEFT_RECTIFIED / filename
-    path_to_right_img = RIGHT_RECTIFIED / filename
-    img1r = cv2.imread(str(path_to_left_img), 0)
-    img2r = cv2.imread(str(path_to_right_img), 0)
+all_images = sorted(IMAGES_DIR.glob("*.png"))
 
-    img1r = cv2.cvtColor(img1r, cv2.COLOR_BGR2RGB).astype("float32")
-    img2r = cv2.cvtColor(img2r, cv2.COLOR_BGR2RGB).astype("float32")
+for idx, path_to_image in tqdm(enumerate(all_images[:5])):
+
+    img_left, img_right = readstack(str(path_to_image))
+
+    # Read extrinsics
+    basename = path_to_image.stem
+    extrinsics_file = basename + ".yaml"
+    path_to_extrinsics = EXTRINSICS_DIR / extrinsics_file
+    scp.load(path_to_extrinsics)
+
+    # Rectify
+    img_left_rect, img_right_rect = rectify_with_scp(
+        scp=scp, left=img_left, right=img_right
+    )
+
+
+    img1r = cv2.cvtColor(img_left_rect, cv2.COLOR_BGR2RGB).astype("float32")
+    img2r = cv2.cvtColor(img_right_rect, cv2.COLOR_BGR2RGB).astype("float32")
     img_size = img1r.shape[:2]
 
     # change max disp
@@ -166,20 +185,22 @@ for idx, filename in tqdm(enumerate(all_files[:5])):
 
     # Filter out black regions
     invalid_pixel_mask = pred_disp < 0
-    rect_mask = np.all(img1r == [0, 0, 0], axis=-1)
+    rect_mask = np.all(img_left_rect == [0, 0, 0], axis=-1)
     rect_mask_bool = rect_mask.astype(bool)
-    sky_mask = sky(img1r, horizon_row=984, B_thresh=150)
+    sky_mask = sky(img_left_rect, horizon_row=984, B_thresh=150)
 
     bad_pixel_mask = invalid_pixel_mask + rect_mask + sky_mask
     pred_disp[bad_pixel_mask] = 0
+
+    # import pdb; pdb.set_trace()
 
     disparity_u8 = (255 * pred_disp / MAX_DISP).astype(np.uint8)
     colored_disp = colorize_disparity_map_u8(
         disp_u8=disparity_u8, max_disparity=255, bad_pixel_mask=bad_pixel_mask
     )
 
-    path_to_disp = DISPARITY_DIR / filename
-    path_to_colored_disp = COLORED_DISPARITY_DIR / filename
+    path_to_disp = DISPARITY_DIR / path_to_image.name
+    path_to_colored_disp = COLORED_DISPARITY_DIR / path_to_image.name
 
     cv2.imwrite(str(path_to_disp), disparity_u8)
     cv2.imwrite(str(path_to_colored_disp), colored_disp)

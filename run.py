@@ -65,6 +65,7 @@ for idx, filename in enumerate(all_files):
     if not filename.endswith('.png'):
         continue
 
+    # import pdb; pdb.set_trace()
     path_to_left_img = LEFT_RECTIFIED / filename
     path_to_right_img = RIGHT_RECTIFIED / filename
     img1r = cv2.imread(str(path_to_left_img), 0)
@@ -191,7 +192,7 @@ for idx, filename in enumerate(all_files):
 
     path_to_disp = DISPARITY_DIR / filename
 
-    cv2.imwrite(path_to_disp, disparity_u8)
+    cv2.imwrite(str(path_to_disp), disparity_u8)
 
     if is_cuda_available:
         torch.cuda.empty_cache()

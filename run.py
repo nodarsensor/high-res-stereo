@@ -1,11 +1,9 @@
-import argparse
 import os
 import time
 from pathlib import Path
 
 import cv2
 import numpy as np
-import skimage.io
 import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
@@ -13,7 +11,6 @@ from torch.autograd import Variable
 
 from models import hsm
 from models.submodule import *
-from utils.eval import mkdir_p, save_pfm
 from utils.preprocess import get_transform
 
 from pynodar.filters import sky

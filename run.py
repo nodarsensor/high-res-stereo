@@ -1,6 +1,7 @@
 import os
 import time
 from pathlib import Path
+from tqdm import tqdm
 
 import cv2
 import numpy as np
@@ -61,7 +62,7 @@ model.eval()
 
 all_files = sorted(os.listdir(LEFT_RECTIFIED))
 
-for idx, filename in enumerate(all_files[:5]):
+for idx, filename in tqdm(enumerate(all_files[:5])):
 
     if not filename.endswith(".png"):
         continue
@@ -95,8 +96,6 @@ for idx, filename in enumerate(all_files[:5]):
         model.module.disp_reg16 = disparityregression(model.module.maxdisp, 16)
         model.module.disp_reg32 = disparityregression(model.module.maxdisp, 32)
         model.module.disp_reg64 = disparityregression(model.module.maxdisp, 64)
-
-    print(f"Maximum disparity: {model.module.maxdisp}")
 
     # resize
     img1_resized = cv2.resize(
@@ -147,18 +146,7 @@ for idx, filename in enumerate(all_files[:5]):
         img2_torch = Variable(torch.FloatTensor(img2_padded))
 
     with torch.no_grad():
-
-        if is_cuda_available:
-            torch.cuda.synchronize()
-
-        start_time = time.time()
         pred_disp, entropy = model(img1_torch, img2_torch)
-
-        if is_cuda_available:
-            torch.cuda.synchronize()
-
-        lapsed_time = time.time() - start_time
-        print(f"Lapsed time: {lapsed_time:.2f}")
 
     pred_disp = torch.squeeze(pred_disp).data.cpu().numpy()
 

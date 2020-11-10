@@ -18,7 +18,7 @@ from utils.preprocess import get_transform
 
 # Configuration
 ROOT_DIR = Path()
-WEIGHTS_PATH = ROOT_DIR / "weights" / "final_768px.tar"
+WEIGHTS_PATH = ROOT_DIR / "weights" / "final-768px.tar"
 PATH_TO_IMAGES = ROOT_DIR / "data"
 LEFT_RECTIFIED = PATH_TO_IMAGES / "left_rect"
 RIGHT_RECTIFIED = PATH_TO_IMAGES / "right_rect"
@@ -26,7 +26,7 @@ OUTPUT = ROOT_DIR / "output"
 DISPARITY_DIR = OUTPUT / "disparity"
 ENTROPY_DIR = OUTPUT / "entropy"
 
-SCALE = 0.75  # 1.0 does not fit into Nvidia GPU memory
+SCALE = 0.1  # 1.0 does not fit into Nvidia GPU memory
 MAX_DISP = 768
 
 # Create output directories
@@ -34,8 +34,6 @@ os.makedirs(DISPARITY_DIR, exist_ok=True)
 
 # cudnn.benchmark = True
 cudnn.benchmark = False
-
-test_left_img, test_right_img, _, _ = DA.dataloader(args.datapath)
 
 # construct model
 model = hsm(128, -1, level=1)
@@ -69,8 +67,8 @@ for idx, filename in enumerate(all_files):
     img1r = cv2.imread(str(path_to_left_img), 0)
     img2r = cv2.imread(str(path_to_right_img), 0)
 
-    img1r = cv2.cvtColor(img1r, cv2.BGR2RGB).astype("float32")
-    img2r = cv2.cvtColor(img2r, cv2.BGR2RGB).astype("float32")
+    img1r = cv2.cvtColor(img1r, cv2.COLOR_BGR2RGB).astype("float32")
+    img2r = cv2.cvtColor(img2r, cv2.COLOR_BGR2RGB).astype("float32")
     img_size = img1r.shape[:2]
 
     # change max disp
@@ -194,3 +192,5 @@ for idx, filename in enumerate(all_files):
 
     if is_cuda_available:
         torch.cuda.empty_cache()
+
+    break

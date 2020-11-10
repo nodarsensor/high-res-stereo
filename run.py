@@ -101,6 +101,50 @@ def main():
 
         print(f"Maximum disparity: {model.module.maxdisp}")
 
+        # resize
+        img1_resized = cv2.resize(
+            img1r,
+            None,
+            fx=SCALE,
+            fy=SCALE,
+            interpolation=cv2.INTER_CUBIC,
+        )
+        img2_resized = cv2.resize(
+            img2r,
+            None,
+            fx=SCALE,
+            fy=SCALE,
+            interpolation=cv2.INTER_CUBIC,
+        )
+        img1_processed = processed(img1_resized).numpy()
+        img2_processed = processed(img2_resized).numpy()
+
+        img1_reshaped = np.reshape(img1_processed, [1, 3, img1_processed.shape[1], img1_processed.shape[2]])
+        img2_reshaped = np.reshape(img2_processed, [1, 3, img2_processed.shape[1], img2_processed.shape[2]])
+
+        # Padding
+        max_h = int(img1_reshaped.shape[2] // 64 * 64)
+        max_w = int(img1_reshaped.shape[3] // 64 * 64)
+        if max_h < img1_reshaped.shape[2]:
+            max_h += 64
+        if max_w < img1_reshaped.shape[3]:
+            max_w += 64
+
+        top_pad = max_h - img1_reshaped.shape[2]
+        left_pad = max_w - img1_reshaped.shape[3]
+        img1_padded = np.lib.pad(
+            img1_reshaped,
+            ((0, 0), (0, 0), (top_pad, 0), (0, left_pad)),
+            mode="constant",
+            constant_values=0,
+        )
+        img2_padded = np.lib.pad(
+            img2_reshaped,
+            ((0, 0), (0, 0), (top_pad, 0), (0, left_pad)),
+            mode="constant",
+            constant_values=0,
+        )
+
 
     if is_cuda_available:
         torch.cuda.empty_cache()

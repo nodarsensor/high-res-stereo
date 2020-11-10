@@ -24,7 +24,8 @@ LEFT_RECTIFIED = PATH_TO_IMAGES / "left_rect"
 RIGHT_RECTIFIED = PATH_TO_IMAGES / "right_rect"
 OUTPUT = ROOT_DIR / "output"
 
-scale = 0.75  # 1.0 does not fit into Nvidia GPU memory
+SCALE = 0.75  # 1.0 does not fit into Nvidia GPU memory
+MAX_DISP = 768
 
 # cudnn.benchmark = True
 cudnn.benchmark = False
@@ -56,6 +57,50 @@ def main():
 
     processed = get_transform()
     model.eval()
+
+    all_files = sorted(os.listdir(LEFT_RECTIFIED))
+
+    for idx, filename in enumerate(all_files):
+
+        path_to_left_img = LEFT_RECTIFIED / filename
+        path_to_right_img = RIGHT_RECTIFIED / filename
+        img1r = cv2.imread(str(path_to_left_img), 0)
+        img2r = cv2.imread(str(path_to_right_img), 0)
+
+        img1r = cv2.cvtColor(img1r, cv2.BGR2RGB).astype("float32")
+        img2r = cv2.cvtColor(img2r, cv2.BGR2RGB).astype("float32")
+        img_size = img1r.shape[:2]
+
+        # change max disp
+        tmpdisp = int(MAX_DISP * SCALE // 64 * 64)
+        if (MAX_DISP * SCALE / 64 * 64) > tmpdisp:
+            model.module.maxdisp = tmpdisp + 64
+        else:
+            model.module.maxdisp = tmpdisp
+        if model.module.maxdisp == 64:
+            model.module.maxdisp = 128
+
+        if is_cuda_available:
+            model.module.disp_reg8 = disparityregression(
+                model.module.maxdisp, 16
+            ).cuda()
+            model.module.disp_reg16 = disparityregression(
+                model.module.maxdisp, 16
+            ).cuda()
+            model.module.disp_reg32 = disparityregression(
+                model.module.maxdisp, 32
+            ).cuda()
+            model.module.disp_reg64 = disparityregression(
+                model.module.maxdisp, 64
+            ).cuda()
+        else:
+            model.module.disp_reg8 = disparityregression(model.module.maxdisp, 16)
+            model.module.disp_reg16 = disparityregression(model.module.maxdisp, 16)
+            model.module.disp_reg32 = disparityregression(model.module.maxdisp, 32)
+            model.module.disp_reg64 = disparityregression(model.module.maxdisp, 64)
+
+        print(f"Maximum disparity: {model.module.maxdisp}")
+
 
     if is_cuda_available:
         torch.cuda.empty_cache()

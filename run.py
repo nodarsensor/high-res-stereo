@@ -145,6 +145,34 @@ def main():
             constant_values=0,
         )
 
+        # Evaluating the model
+        if is_cuda_available:
+            img1_torch = Variable(torch.FloatTensor(img1_padded).cuda())
+            img2_torch = Variable(torch.FloatTensor(img2_padded).cuda())
+        else:
+            img1_torch = Variable(torch.FloatTensor(img1_padded))
+            img2_torch = Variable(torch.FloatTensor(img2_padded))
+
+        with torch.no_grad():
+
+            if is_cuda_available:
+                torch.cuda.synchronize()
+
+            start_time = time.time()
+            pred_disp, entropy = model(img1_torch, img2_torch)
+
+            if is_cuda_available:
+                torch.cuda.synchronize()
+
+            lapsed_time = time.time() - start_time
+            print(f"Lapsed time: {lapsed_time:.2f}")
+
+        pred_disp = torch.squeeze(pred_disp).data.cpu().numpy()
+
+        top_pad = max_h - img1_resized.shape[0]
+        left_pad = max_w - img1_resized.shape[1]
+        entropy = entropy[top_pad:, : pred_disp.shape[1] - left_pad].cpu().numpy()
+        pred_disp = pred_disp[top_pad:, : pred_disp.shape[1] - left_pad]
 
     if is_cuda_available:
         torch.cuda.empty_cache()

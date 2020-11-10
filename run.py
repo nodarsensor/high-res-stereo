@@ -1,19 +1,20 @@
 import argparse
-import cv2
-from models import hsm
-import numpy as np
 import os
+import time
+from pathlib import Path
+
+import cv2
+import numpy as np
 import skimage.io
 import torch
-import torch.nn as nn
 import torch.backends.cudnn as cudnn
+import torch.nn as nn
 from torch.autograd import Variable
-import time
+
+from models import hsm
 from models.submodule import *
 from utils.eval import mkdir_p, save_pfm
 from utils.preprocess import get_transform
-
-from pathlib import Path
 
 # Configuration
 ROOT_DIR = Path()
@@ -23,7 +24,7 @@ LEFT_RECTIFIED = PATH_TO_IMAGES / "left_rect"
 RIGHT_RECTIFIED = PATH_TO_IMAGES / "right_rect"
 OUTPUT = ROOT_DIR / "output"
 
-scale = 0.75 # 1.0 does not fit into Nvidia GPU memory
+scale = 0.75  # 1.0 does not fit into Nvidia GPU memory
 
 # cudnn.benchmark = True
 cudnn.benchmark = False
